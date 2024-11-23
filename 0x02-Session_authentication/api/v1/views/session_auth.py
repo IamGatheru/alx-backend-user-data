@@ -1,46 +1,43 @@
 #!/usr/bin/env python3
+""" Module of Users views
 """
-Module that contains views for Session
-authentication routes
-"""
-from flask import abort, jsonify, request
+import os
 from api.v1.views import app_views
 from models.user import User
-import os
+from flask import jsonify, request
 
 
 @app_views.route('/auth_session/login', methods=['POST'], strict_slashes=False)
-def get_user_for_session_auth():
-    """
-    Get's user based on request data
+def session_auth():
+    """_summary_
     """
     email = request.form.get('email')
     password = request.form.get('password')
-    if email == "" or email is None:
+    if email is None or email == '':
         return jsonify({"error": "email missing"}), 400
-    if password == "" or password is None:
+    if password is None or password == '':
         return jsonify({"error": "password missing"}), 400
-    users = User.search({'email': email})
-    if len(users) == 0:
+    users = User.search({"email": email})
+    if not users or users == []:
         return jsonify({"error": "no user found for this email"}), 404
     for user in users:
         if user.is_valid_password(password):
             from api.v1.app import auth
-            cookie = os.getenv('SESSION_NAME')
-            session = auth.create_session(user.id)
+            session_id = auth.create_session(user.id)
             resp = jsonify(user.to_json())
-            resp.set_cookie(cookie, session)
+            session_name = os.getenv('SESSION_NAME')
+            resp.set_cookie(session_name, session_id)
             return resp
     return jsonify({"error": "wrong password"}), 401
 
 
 @app_views.route('/auth_session/logout',
                  methods=['DELETE'], strict_slashes=False)
-def delete_user_session():
+def logout():
     """
-    Deletes user session
+    for logging out user
     """
     from api.v1.app import auth
-    if not auth.destroy_session(request):
-        abort(404)
-    return jsonify({}), 200
+    if auth.destroy_session(request):
+        return jsonify({}), 200
+    abort(404)

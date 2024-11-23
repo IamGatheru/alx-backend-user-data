@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
+"""_summary_
 """
-Contains Model User definitio for
-database using SQLAlchemy
-"""
+
+
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-
-
 Base = declarative_base()
 
 
 class User(Base):
-    """
-    A User class mapping to to table users
+    """_summary_
+
+    Args:
+        Base (_type_): _description_
     """
     __tablename__ = 'users'
+
     id = Column(Integer, primary_key=True)
     email = Column(String(250), nullable=False)
     hashed_password = Column(String(250), nullable=False)

@@ -1,77 +1,113 @@
 #!/usr/bin/env python3
+"""_summary_
 """
-Basic Flask app for a minimal WSGI application
-"""
-from flask import Flask, jsonify, request, abort, redirect, url_for
+
+
+from flask import Flask, jsonify, request, abort, redirect
 from auth import Auth
-app = Flask(__name__)
+
 AUTH = Auth()
+
+app = Flask(__name__)
 
 
 @app.route('/', methods=['GET'])
-def welcome() -> str:
-    """
-    Index route that returns a json paylod
+def index() -> str:
+    """_summary_
     """
     return jsonify({"message": "Bienvenue"})
 
 
 @app.route('/users', methods=['POST'])
 def users() -> str:
-    """
-    Registers a user using AUTH
+    """_summary_
     """
     email = request.form.get('email')
     password = request.form.get('password')
+
+    # regsiter user if user does not exist
     try:
         user = AUTH.register_user(email, password)
         return jsonify({"email": user.email, "message": "user created"})
-    except ValueError:
+    except Exception:
         return jsonify({"message": "email already registered"}), 400
 
 
 @app.route('/sessions', methods=['POST'])
 def login() -> str:
-    """
-    Creates a new session for a user on valid information
-    stores in a cookie and returns it as a header
+    """_summary_
+
+    Returns:
+        str: _description_
     """
     email = request.form.get('email')
     password = request.form.get('password')
-    if AUTH.valid_login(email, password):
-        session_id = AUTH.create_session(email)
-        resp = jsonify({"email": email, "message": "logged in"})
-        resp.set_cookie("session_id", session_id)
-        return resp
-    else:
+
+    if not (AUTH.valid_login(email, password)):
         abort(401)
+    else:
+        # create a new session
+        session_id = AUTH.create_session(email)
+        response = jsonify({"email": email, "message": "logged in"})
+        response.set_cookie('session_id', session_id)
+
+    return response
 
 
 @app.route('/sessions', methods=['DELETE'])
 def logout() -> str:
+    """_summary_
     """
-    Gets request from request cookies finds user associated
-    with session_id if existing destroy's the session, redirects
-    to index and if doesn't exist raise a 403 error
-    """
-    session_id = request.cookies.get("session_id")
+    session_id = request.cookies.get('session_id')
     user = AUTH.get_user_from_session_id(session_id)
-    if user:
-        AUTH.destroy_session(user.id)
-        return redirect(url_for('/'))
-    abort(403)
+    if not user:
+        abort(403)
+    AUTH.destroy_session(user.id)
+    return redirect('/')
 
 
 @app.route('/profile', methods=['GET'])
-def profile():
-    """
-    Finds user if existing in session or abort
+def profile() -> str:
+    """_summary_
     """
     session_id = request.cookies.get('session_id')
     user = AUTH.get_user_from_session_id(session_id)
     if user:
         return jsonify({"email": user.email}), 200
-    abort(403)
+    else:
+        abort(403)
+
+
+@app.route('/reset_password', methods=['POST'])
+def get_reset_password_token() -> str:
+    """_summary_
+
+    Returns:
+        str: _description_
+    """
+    email = request.form.get('email')
+    try:
+        reset_token = AUTH.get_reset_password_token(email)
+        return jsonify({"email": email, "reset_token": reset_token}), 200
+    except Exception:
+        abort(403)
+
+
+@app.route('/reset_password', methods=['PUT'])
+def update_password() -> str:
+    """_summary_
+
+    Returns:
+        str: _description_
+    """
+    email = request.form.get('email')
+    reset_token = request.form.get('reset_token')
+    new_password = request.form.get('new_password')
+    try:
+        AUTH.update_password(reset_token, new_password)
+        return jsonify({"email": email, "message": "Password updated"}), 200
+    except Exception:
+        abort(403)
 
 
 if __name__ == "__main__":
